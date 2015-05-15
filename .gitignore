@@ -1,8 +1,7 @@
 .gitignore
-*.swp
 *.beam
 .eunit
+.rebar
 ebin
-doc
-rel
+_rel
 erl_crash.dump
