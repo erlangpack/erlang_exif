@@ -1,8 +1,9 @@
-{application, exif,
- [{description, "Exif Reader"},
-  {vsn, "1.0"},
-  {registered, []},
-  {modules, []},
-  {applications, [kernel, stdlib]},
-  {mod, {exif, []}},
-  {env, []}]}.
+{application, exif, [
+    {description, "Exif Reader"},
+    {vsn, "1.0"},
+    {registered, []},
+    {modules, []},
+    {applications, [kernel, stdlib]},
+    {mod, {exif, []}},
+    {env, []}
+]}.
