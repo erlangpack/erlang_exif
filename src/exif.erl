@@ -43,13 +43,13 @@ read_binary(Data) when is_binary(Data) ->
     read(ImageData).
 
 read(File) when is_list(File) ->
-  {ok, Fd} = file:open(File, [read, binary, raw]),
-  {ok, Img} = file:read(Fd, ?MAX_EXIF_LEN),
-  ok = file:close(Fd),
-  read(Img);
+    {ok, Fd} = file:open(File, [read, binary, raw]),
+    {ok, Img} = file:read(Fd, ?MAX_EXIF_LEN),
+    ok = file:close(Fd),
+    read(Img);
 
 read(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>) ->
-  read_exif(Rest);
+    read_exif(Rest);
 read(<< ?JPEG_MARKER:16, _Rest/binary >>) ->
     dict:new();
 read(_) ->
@@ -63,156 +63,156 @@ read_exif(<<
              Offset    : 4/binary,
              Rest/binary
           >>) ->
-  End = case ByteOrder of
-    16#4949 -> little;
-    16#4d4d -> big
-  end,
-  42 = uread(FortyTwo, End),
-  ?FIRST_EXIF_OFFSET = uread(Offset, End),
-  read_tags(Rest, ?START_POSITION, End, fun image_tag/1);
+    End = case ByteOrder of
+        16#4949 -> little;
+        16#4d4d -> big
+    end,
+    42 = uread(FortyTwo, End),
+    ?FIRST_EXIF_OFFSET = uread(Offset, End),
+    read_tags(Rest, ?START_POSITION, End, fun image_tag/1);
 
 read_exif(_) ->
-  {error, invalid_exif}.
+    {error, invalid_exif}.
 
 read_tags(<< NumEntries:2/binary, Rest/binary >>, StartPos, End, TagFun) ->
     N = uread(NumEntries, End),
     read_tags(Rest, N, StartPos, End, TagFun).
 
 read_tags(Bin, NumEntries, StartPos, End, TagFun) ->
-  read_tags(Bin, NumEntries, StartPos, End, TagFun, dict:new()).
+    read_tags(Bin, NumEntries, StartPos, End, TagFun, dict:new()).
 
 read_tags(_Bin, 0, _StartPos, _End, _TagFun, Tags) ->
-  Tags;
+    Tags;
 read_tags(Bin, NumEntries, StartPos, End, TagFun, Tags) ->
-  {NewTags, Rest} = add_tag(Bin, StartPos, End, Tags, TagFun),
-  read_tags(Rest, NumEntries - 1, StartPos + ?FIELD_LEN, End, TagFun, NewTags).
+    {NewTags, Rest} = add_tag(Bin, StartPos, End, Tags, TagFun),
+    read_tags(Rest, NumEntries - 1, StartPos + ?FIELD_LEN, End, TagFun, NewTags).
 
 add_tag(<< Tag:2/binary, Rest/binary >>, StartPos, End, Tags, TagFun) ->
-  Name = TagFun(uread(Tag, End)),
-  Value = tag_value(Name, read_tag_value(Rest, StartPos, End)),
-  ?DEBUG("Tag: ~p: ~p~n", [Name, Value]),
-  NewTags = case Name of
-    unknown ->
-      Tags;
-    exif ->
-      ExifTags = read_subtags(Rest, Value, StartPos, End, fun exif_tag/1),
-      dict:merge(fun(_K, _ImageTag, ExifTag) -> ExifTag end, Tags, ExifTags);
-    gps ->
-      GpsTags = read_subtags(Rest, Value, StartPos, End, fun gps_tag/1),
-      dict:merge(fun(_K, _ImageTag, GpsTag) -> GpsTag end, Tags, GpsTags);
-    _ ->
-      dict:store(Name, Value, Tags)
-  end,
-  Len = ?FIELD_LEN - 2, % 2 bytes for the tag above.
-  << _:Len/binary, NewRest/binary >> = Rest,
-  {NewTags, NewRest}.
+    Name = TagFun(uread(Tag, End)),
+    Value = tag_value(Name, read_tag_value(Rest, StartPos, End)),
+    ?DEBUG("Tag: ~p: ~p~n", [Name, Value]),
+    NewTags = case Name of
+        unknown ->
+            Tags;
+        exif ->
+            ExifTags = read_subtags(Rest, Value, StartPos, End, fun exif_tag/1),
+            dict:merge(fun(_K, _ImageTag, ExifTag) -> ExifTag end, Tags, ExifTags);
+        gps ->
+            GpsTags = read_subtags(Rest, Value, StartPos, End, fun gps_tag/1),
+            dict:merge(fun(_K, _ImageTag, GpsTag) -> GpsTag end, Tags, GpsTags);
+        _ ->
+            dict:store(Name, Value, Tags)
+    end,
+    Len = ?FIELD_LEN - 2, % 2 bytes for the tag above.
+    << _:Len/binary, NewRest/binary >> = Rest,
+    {NewTags, NewRest}.
 
 read_subtags(Bin, Offset, StartPos, End, TagFun) ->
-  RelOffset = ?FIELD_LEN + Offset - StartPos - 2,
-  RelStartPos = ?FIELD_LEN + Offset + 2,
-  << _:RelOffset/binary, Rest/binary >> = Bin,
-  read_tags(Rest, RelStartPos, End, TagFun).
+    RelOffset = ?FIELD_LEN + Offset - StartPos - 2,
+    RelStartPos = ?FIELD_LEN + Offset + 2,
+    << _:RelOffset/binary, Rest/binary >> = Bin,
+    read_tags(Rest, RelStartPos, End, TagFun).
 
 read_tag_value(<<
                  ValueType   : 2/binary,
                  ValueNum    : 4/binary,
                  Rest/binary
                >>, StartPos, End) ->
-  Type = uread(ValueType, End),
-  NumValues = uread(ValueNum, End),
-  case decode_tag(Type, Rest, NumValues, StartPos, End) of
-      [] -> ok;
-      [Value] -> Value;
-      Values  -> Values
-  end.
+    Type = uread(ValueType, End),
+    NumValues = uread(ValueNum, End),
+    case decode_tag(Type, Rest, NumValues, StartPos, End) of
+        [] -> ok;
+        [Value] -> Value;
+        Values  -> Values
+    end.
 
 %% Tag decoding by type.
 
 % Byte
 decode_tag(?TYPE_BYTE, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Byte(~p)~n", [NumValues]),
-  decode_numeric(Bin, NumValues, StartPos, ?BYTE_SIZE, End);
+    ?DEBUG("> Byte(~p)~n", [NumValues]),
+    decode_numeric(Bin, NumValues, StartPos, ?BYTE_SIZE, End);
 
 % ASCII
 decode_tag(?TYPE_ASCII, Bin, NumBytes, StartPos, End) ->
-  ?DEBUG("> ASCII(~p)~n", [NumBytes]),
-  << ValueOffset:4/binary, Rest/binary >> = Bin,
-  case NumBytes > 4 of
-    true ->
-      Offset = uread(ValueOffset, End) - StartPos,
-      Len = NumBytes - 1,  % ignore null-byte termination
-      << _:Offset/binary, Value:Len/binary, _/binary >> = Rest,
-      Value;
-    false ->
-      ValueOffset
-  end;
+    ?DEBUG("> ASCII(~p)~n", [NumBytes]),
+    << ValueOffset:4/binary, Rest/binary >> = Bin,
+    case NumBytes > 4 of
+        true ->
+            Offset = uread(ValueOffset, End) - StartPos,
+            Len = NumBytes - 1,  % ignore null-byte termination
+            << _:Offset/binary, Value:Len/binary, _/binary >> = Rest,
+            Value;
+        false ->
+            ValueOffset
+    end;
 
 % Short
 decode_tag(?TYPE_SHORT, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Short(~p)~n", [NumValues]),
-  decode_numeric(Bin, NumValues, StartPos, ?SHORT_SIZE, End);
+    ?DEBUG("> Short(~p)~n", [NumValues]),
+    decode_numeric(Bin, NumValues, StartPos, ?SHORT_SIZE, End);
 
 % Signed short
 decode_tag(?TYPE_SIGNED_SHORT, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Signed Short(~p)~n", [NumValues]),
-  Ushorts = decode_numeric(Bin, NumValues, StartPos, ?SHORT_SIZE, End),
-  lists:map(fun as_signed/1, Ushorts);
+    ?DEBUG("> Signed Short(~p)~n", [NumValues]),
+    Ushorts = decode_numeric(Bin, NumValues, StartPos, ?SHORT_SIZE, End),
+    lists:map(fun as_signed/1, Ushorts);
 
 % Long
 decode_tag(?TYPE_LONG, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Long(~p)~n", [NumValues]),
-  decode_numeric(Bin, NumValues, StartPos, ?LONG_SIZE, End);
+    ?DEBUG("> Long(~p)~n", [NumValues]),
+    decode_numeric(Bin, NumValues, StartPos, ?LONG_SIZE, End);
 
 % Signed long
 decode_tag(?TYPE_SIGNED_LONG, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Signed Long(~p)~n", [NumValues]),
-  Ulongs = decode_numeric(Bin, NumValues, StartPos, ?LONG_SIZE, End),
-  lists:map(fun as_signed/1, Ulongs);
+    ?DEBUG("> Signed Long(~p)~n", [NumValues]),
+    Ulongs = decode_numeric(Bin, NumValues, StartPos, ?LONG_SIZE, End),
+    lists:map(fun as_signed/1, Ulongs);
 
 % Rational
 decode_tag(?TYPE_RATIO, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Rational(~p)~n", [NumValues]),
-  decode_ratio(Bin, NumValues, StartPos, End);
+    ?DEBUG("> Rational(~p)~n", [NumValues]),
+    decode_ratio(Bin, NumValues, StartPos, End);
 
 % Signed rational
 decode_tag(?TYPE_SIGNED_RATIO, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Signed Rational(~p)~n", [NumValues]),
-  Uratios = decode_ratio(Bin, NumValues, StartPos, End),
-  lists:map(fun({ratio, Num, Den}) ->
-    {ratio, as_signed(Num), as_signed(Den)}
-  end, Uratios);
+    ?DEBUG("> Signed Rational(~p)~n", [NumValues]),
+    Uratios = decode_ratio(Bin, NumValues, StartPos, End),
+    lists:map(fun({ratio, Num, Den}) ->
+        {ratio, as_signed(Num), as_signed(Den)}
+    end, Uratios);
 
 % Undefined
 decode_tag(?TYPE_UNDEFINED, Bin, NumValues, StartPos, End) ->
-  ?DEBUG("> Undefined(~p)~n", [NumValues]),
-  decode_numeric(Bin, NumValues, StartPos, ?BYTE_SIZE, End).
+    ?DEBUG("> Undefined(~p)~n", [NumValues]),
+    decode_numeric(Bin, NumValues, StartPos, ?BYTE_SIZE, End).
 
 decode_numeric(Bin, NumValues, StartPos, Size, End) ->
-  Len = NumValues * Size,
-  Values = case Len > 4 of
-    true ->
-      << Offset:4/binary, Rest/binary >> = Bin,
-      RelOffset = uread(Offset, End) - StartPos,
-      << _:RelOffset/binary, Data:Len/binary, _/binary >> = Rest,
-      Data;
-    false ->
-      << Value:Len/binary, _/binary >> = Bin,
-      Value
-  end,
-  uread_many(Values, Size, End).
+    Len = NumValues * Size,
+    Values = case Len > 4 of
+        true ->
+            << Offset:4/binary, Rest/binary >> = Bin,
+            RelOffset = uread(Offset, End) - StartPos,
+            << _:RelOffset/binary, Data:Len/binary, _/binary >> = Rest,
+            Data;
+        false ->
+            << Value:Len/binary, _/binary >> = Bin,
+            Value
+    end,
+    uread_many(Values, Size, End).
 
 decode_ratio(Bin, NumValues, StartPos, End) ->
-  << ValueOffset:4/binary, Rest/binary >> = Bin,
-  Offset = uread(ValueOffset, End) - StartPos,
-  decode_ratios(Rest, NumValues, Offset, End).
+    << ValueOffset:4/binary, Rest/binary >> = Bin,
+    Offset = uread(ValueOffset, End) - StartPos,
+    decode_ratios(Rest, NumValues, Offset, End).
 
 decode_ratios(_Bin, 0, _Offset, _End) ->
-  [];
+    [];
 decode_ratios(Bin, NumValues, Offset, End) ->
-  << _ : Offset/binary,
-     N : ?LONG_SIZE/binary,
-     D : ?LONG_SIZE/binary,
-     _Rest/binary >> = Bin,
+    << _ : Offset/binary,
+       N : ?LONG_SIZE/binary,
+       D : ?LONG_SIZE/binary,
+       _Rest/binary >> = Bin,
 
     NewOffset = Offset + ?RATIO_SIZE,
     Num = uread(N, End),
@@ -498,10 +498,10 @@ tag_value(file_source, 3) -> <<"DSC">>;
 tag_value(_Name, Value) -> Value.
 
 uread(Bin, End) ->
-  binary:decode_unsigned(Bin, End).
+    binary:decode_unsigned(Bin, End).
 
 uread_many(<<>>, _Size, _End) ->
-  [];
+    [];
 uread_many(Bin, Size, End) ->
-  << Num:Size/binary, Rest/binary >> = Bin,
-  [uread(Num, End) | uread_many(Rest, Size, End)].
+     << Num:Size/binary, Rest/binary >> = Bin,
+    [uread(Num, End) | uread_many(Rest, Size, End)].
