@@ -15,10 +15,6 @@ init_per_suite(Config) ->
     ok = application:load(exif),
     Config.
 
-% end_per_suite(_Config) ->
-%     % TODO: probably don't need this function
-%     ok.
-
 all() ->
     [
         test_read_exif,
