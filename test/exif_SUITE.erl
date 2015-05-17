@@ -15,15 +15,15 @@ init_per_suite(Config) ->
     ok = application:load(exif),
     Config.
 
-end_per_suite(_Config) ->
-    % TODO: probably don't need this function
-    ok.
+% end_per_suite(_Config) ->
+%     % TODO: probably don't need this function
+%     ok.
 
 all() ->
     [
-        test_read_exif
-        % TODO: test reading image with JFIF and Exif data
-        % TODO: test reading image with JFIF and no Exif data
+        test_read_exif,
+        test_read_jfif,
+        test_read_jfif_exif
     ].
 
 test_read_exif(Config) ->
@@ -32,9 +32,36 @@ test_read_exif(Config) ->
     case exif:read(ImagePath) of
         {error, _Reason} ->
             ?assert(false);
-        ExifDate ->
+        Exif ->
             % TODO: extend this to verify additional values
-            case dict:find(date_time_original, ExifDate) of
+            case dict:find(date_time_original, Exif) of
+                {ok, Original} ->
+                    ?assertEqual(<<"2014:04:23 13:33:08">>, Original);
+                error ->
+                    ?assert(false)
+            end
+    end,
+    ok.
+
+test_read_jfif(Config) ->
+    DataDir = ?config(data_dir, Config),
+    ImagePath = filename:join([DataDir, "with_jfif.jpg"]),
+    case exif:read(ImagePath) of
+        {error, _Reason} ->
+            ?assert(false);
+        Exif ->
+            ?assert(dict:is_empty(Exif))
+    end,
+    ok.
+
+test_read_jfif_exif(Config) ->
+    DataDir = ?config(data_dir, Config),
+    ImagePath = filename:join([DataDir, "with_jfif_exif.jpg"]),
+    case exif:read(ImagePath) of
+        {error, _Reason} ->
+            ?assert(false);
+        Exif ->
+            case dict:find(date_time_original, Exif) of
                 {ok, Original} ->
                     ?assertEqual(<<"2014:04:23 13:33:08">>, Original);
                 error ->

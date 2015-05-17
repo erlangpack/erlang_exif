@@ -1,3 +1,11 @@
+%% -*- coding: utf-8 -*-
+%% -------------------------------------------------------------------
+%%
+%% Copyright (c) 2011 Andre Nathan
+%% Copyright (c) 2015 Nathan Fiedler
+%%
+%% -------------------------------------------------------------------
+
 -module(exif).
 -export([read/1]).
 -export([read_binary/1]).
@@ -11,6 +19,7 @@
 -define(MAX_EXIF_LEN,        65536).
 -define(JPEG_MARKER,       16#ffd8).
 -define(EXIF_MARKER,       16#ffe1).
+-define(JFIF_MARKER,       16#ffe0).
 -define(FIRST_EXIF_OFFSET,       8).
 -define(FIELD_LEN,              12).
 -define(START_POSITION,         22).
@@ -48,12 +57,26 @@ read(File) when is_list(File) ->
     ok = file:close(Fd),
     read(Img);
 
+read(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>) ->
+    % skip the JFIF segment and attempt to match the Exif segment
+    case skip_segment(Len, Rest) of
+        <<?EXIF_MARKER:16, _Len:16, Exif/binary>> ->
+            read_exif(Exif);
+        _ ->
+            % apparently just JFIF and no Exif
+            dict:new()
+    end;
 read(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>) ->
     read_exif(Rest);
 read(<< ?JPEG_MARKER:16, _Rest/binary >>) ->
     dict:new();
 read(_) ->
     dict:new().
+
+skip_segment(Len, Data) ->
+    Skip = Len - 2,
+    <<_Segment:Skip/binary, Rest/binary>> = Data,
+    Rest.
 
 read_exif(<<
              "Exif",
