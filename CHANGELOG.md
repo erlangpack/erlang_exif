@@ -3,7 +3,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.1.0] - 2015-03-14
+## [2.0.0] - 2015-05-17
+### Changed
+- The read functions now return `{ok, Data}` instead of just `Data`, to make it easier
+  to distinquish from the error case (`{error, Reason}`).
+
+## [1.1.0] - 2015-05-14
 ### Changed
 - Library now detects and skips JFIF segments, if present. Previously it would fail
   to read the Exif data because the APP1 marker did not follow the SOI marker (which

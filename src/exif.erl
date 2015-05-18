@@ -4,6 +4,10 @@
 %% Copyright (c) 2011 Andre Nathan
 %% Copyright (c) 2015 Nathan Fiedler
 %%
+%% @author Andre Nathan, Nathan Fiedler
+%%
+%% @doc Reads the Exif data from JPEG images.
+%% @end
 %% -------------------------------------------------------------------
 
 -module(exif).
@@ -41,7 +45,13 @@
 -define(TYPE_SIGNED_LONG,   9).
 -define(TYPE_SIGNED_RATIO, 10).
 
-
+%%
+%% @doc Read the Exif data from a binary.
+%%
+-spec read_binary(Data) -> {ok, Exif} | {error, Reason}
+    when Data   :: binary(),
+         Exif   :: dict:dict(),
+         Reason :: term().
 read_binary(Data) when is_binary(Data) ->
     ImageData = if byte_size(Data) > ?MAX_EXIF_LEN ->
                         <<Img:?MAX_EXIF_LEN/binary, _/binary>> = Data,
@@ -51,6 +61,17 @@ read_binary(Data) when is_binary(Data) ->
                 end,
     read(ImageData).
 
+%%
+%% @doc Read the Exif data from a named file (or binary data).
+%%
+-spec read(File) -> {ok, Exif} | {error, Reason}
+    when File   :: list(),
+         Exif   :: dict:dict(),
+         Reason :: term()
+        ; (Data) -> {ok, Exif} | {error, Reason}
+    when Data   :: binary(),
+         Exif   :: dict:dict(),
+         Reason :: term().
 read(File) when is_list(File) ->
     {ok, Fd} = file:open(File, [read, binary, raw]),
     {ok, Img} = file:read(Fd, ?MAX_EXIF_LEN),
@@ -64,14 +85,14 @@ read(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>) ->
             read_exif(Exif);
         _ ->
             % apparently just JFIF and no Exif
-            dict:new()
+            {ok, dict:new()}
     end;
 read(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>) ->
     read_exif(Rest);
 read(<< ?JPEG_MARKER:16, _Rest/binary >>) ->
-    dict:new();
+    {ok, dict:new()};
 read(_) ->
-    dict:new().
+    {ok, dict:new()}.
 
 skip_segment(Len, Data) ->
     Skip = Len - 2,
@@ -92,7 +113,7 @@ read_exif(<<
     end,
     42 = uread(FortyTwo, End),
     ?FIRST_EXIF_OFFSET = uread(Offset, End),
-    read_tags(Rest, ?START_POSITION, End, fun image_tag/1);
+    {ok, read_tags(Rest, ?START_POSITION, End, fun image_tag/1)};
 
 read_exif(_) ->
     {error, invalid_exif}.
