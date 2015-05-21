@@ -20,7 +20,7 @@ To add `erlang-exif` as a dependency to your rebar-based project, simply add the
 
 ```
 {deps, [
-    {exif, ".*", {git, "https://github.com/nlfiedler/erlang-exif", {tag, "v2.0"}}}
+    {exif, ".*", {git, "https://github.com/nlfiedler/erlang-exif", {tag, "2.0.0"}}}
 ]}.
 ```
 
