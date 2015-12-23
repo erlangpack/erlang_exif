@@ -2,7 +2,7 @@
 
 ## Building
 
-Requires [Erlang/OTP](http://www.erlang.org) R17 for building and running, and [rebar](https://github.com/rebar/rebar) for building.
+Requires [Erlang/OTP](http://www.erlang.org) R17|R18 for building and running, and [rebar](https://github.com/rebar/rebar) for building.
 
 ```
 $ make compile

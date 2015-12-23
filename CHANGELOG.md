@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.1] - 2015-12-22
+### Changed
+- Update `rebar.config` Erlang/OTP dependency to include R18.
+
 ## [2.0.0] - 2015-05-17
 ### Changed
 - The read functions now return `{ok, Data}` instead of just `Data`, to make it easier
