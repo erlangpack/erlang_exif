@@ -20,6 +20,12 @@
 -define(DEBUG(_Fmt, _Args), ok).
 -endif.
 
+-ifdef(namespaced_dicts).
+-type exif_dict() :: dict:dict().
+-else.
+-type exif_dict() :: dict().
+-endif.
+
 -define(MAX_EXIF_LEN,        65536).
 -define(JPEG_MARKER,       16#ffd8).
 -define(EXIF_MARKER,       16#ffe1).
@@ -50,7 +56,7 @@
 %%
 -spec read_binary(Data) -> {ok, Exif} | {error, Reason}
     when Data   :: binary(),
-         Exif   :: dict:dict(),
+         Exif   :: exif_dict(),
          Reason :: term().
 read_binary(Data) when is_binary(Data) ->
     ImageData = if byte_size(Data) > ?MAX_EXIF_LEN ->
@@ -66,11 +72,11 @@ read_binary(Data) when is_binary(Data) ->
 %%
 -spec read(File) -> {ok, Exif} | {error, Reason}
     when File   :: list(),
-         Exif   :: dict:dict(),
+         Exif   :: exif_dict(),
          Reason :: term()
         ; (Data) -> {ok, Exif} | {error, Reason}
     when Data   :: binary(),
-         Exif   :: dict:dict(),
+         Exif   :: exif_dict(),
          Reason :: term().
 read(File) when is_list(File) ->
     {ok, Fd} = file:open(File, [read, binary, raw]),
@@ -475,8 +481,8 @@ tag_value(orientation, 3) -> <<"Bottom-right">>;
 tag_value(orientation, 4) -> <<"Bottom-left">>;
 tag_value(orientation, 5) -> <<"Left-top">>;
 tag_value(orientation, 6) -> <<"Right-top">>;
-tag_value(orientation, 7) -> <<"Top-left">>;
-tag_value(orientation, 8) -> <<"Top-left">>;
+tag_value(orientation, 7) -> <<"Right-bottom">>;
+tag_value(orientation, 8) -> <<"Left-bottom">>;
 
 tag_value(ycb_cr_positioning, 1) -> <<"Centered">>;
 tag_value(ycb_cr_positioning, 2) -> <<"Co-sited">>;
