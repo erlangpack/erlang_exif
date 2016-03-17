@@ -1,9 +1,12 @@
 {application, exif, [
-    {description, "Exif Reader"},
-    {vsn, "1.0"},
+    {description, "Read EXIF data from JPEG images."},
+    {vsn, "2.0.2"},
     {registered, []},
     {modules, []},
-    {applications, [kernel, stdlib]},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
     {mod, {exif, []}},
     {env, []}
 ]}.

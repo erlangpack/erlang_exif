@@ -46,7 +46,7 @@ test_read_jfif(Config) ->
     DataDir = ?config(data_dir, Config),
     ImagePath = filename:join([DataDir, "with_jfif.jpg"]),
     {ok, Exif} = exif:read(ImagePath),
-    ?assert(dict:is_empty(Exif)),
+    ?assertEqual(0, dict:size(Exif)),
     ok.
 
 test_read_jfif_exif(Config) ->

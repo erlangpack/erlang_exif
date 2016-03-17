@@ -1,17 +1,17 @@
 # Erlang EXIF Library
 
-## Building
+## Building and Testing
 
-Requires [Erlang/OTP](http://www.erlang.org) R17|R18 for building and running, and [rebar](https://github.com/rebar/rebar) for building.
+### Prerequisites
+
+* [Erlang/OTP](http://www.erlang.org) R16 or higher
+* [rebar](https://github.com/rebar/rebar) 2.x
+
+To build the application and run the test suite, use `rebar` like so:
 
 ```
-$ make compile
-```
-
-## Testing
-
-```
-$ make ct
+$ rebar compile
+$ rebar ct
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ To add `erlang-exif` as a dependency to your rebar-based project, simply add the
 
 ```
 {deps, [
-    {exif, ".*", {git, "https://github.com/nlfiedler/erlang-exif", {tag, "2.0.0"}}}
+    {exif, ".*", {git, "https://github.com/nlfiedler/erlang-exif", {tag, "2.0.2"}}}
 ]}.
 ```
 
