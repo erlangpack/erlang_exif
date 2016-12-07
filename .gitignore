@@ -2,6 +2,7 @@
 *.beam
 .eunit
 .rebar
+.rebar3
 ebin
 _rel
 erl_crash.dump

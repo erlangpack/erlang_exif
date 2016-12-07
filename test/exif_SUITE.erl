@@ -19,7 +19,8 @@ all() ->
     [
         test_read_exif,
         test_read_jfif,
-        test_read_jfif_exif
+        test_read_jfif_exif,
+        test_ifd_end
     ].
 
 test_read_exif(Config) ->
@@ -55,4 +56,10 @@ test_read_jfif_exif(Config) ->
     {ok, Exif} = exif:read(ImagePath),
     {ok, Original} = dict:find(date_time_original, Exif),
     ?assertEqual(<<"2014:04:23 13:33:08">>, Original),
+    ok.
+
+test_ifd_end(Config) ->
+    DataDir = ?config(data_dir, Config),
+    ImagePath = filename:join([DataDir, "ifd_end.jpg"]),
+    {ok, _Exif} = exif:read(ImagePath),
     ok.

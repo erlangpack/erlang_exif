@@ -105,50 +105,62 @@ skip_segment(Len, Data) ->
     <<_Segment:Skip/binary, Rest/binary>> = Data,
     Rest.
 
+% Exif header
 read_exif(<<
-             "Exif",
-             0         : 16,
-             ByteOrder : 16,
-             FortyTwo  : 2/binary,
-             Offset    : 4/binary,
-             Rest/binary
-          >>) ->
-    End = case ByteOrder of
-        16#4949 -> little;
-        16#4d4d -> big
-    end,
-    42 = uread(FortyTwo, End),
-    ?FIRST_EXIF_OFFSET = uread(Offset, End),
-    {ok, read_tags(Rest, ?START_POSITION, End, fun image_tag/1)};
-
+            "Exif",
+            0 : 16,
+            TiffMarker/binary
+        >>) ->
+    read_tiff_marker(TiffMarker);
 read_exif(_) ->
     {error, invalid_exif}.
 
-read_tags(<< NumEntries:2/binary, Rest/binary >>, StartPos, End, TagFun) ->
-    N = uread(NumEntries, End),
-    read_tags(Rest, N, StartPos, End, TagFun).
+read_tiff_marker(<<
+             16#4949   : 16,
+             16#2a00   : 16,
+             Offset    : 4/binary,
+             _/binary
+          >> = TiffMarker) ->
+    read_exif_header(little, Offset, TiffMarker);
+read_tiff_marker(<< 16#4d4d   : 16,
+             16#002a   : 16,
+             Offset    : 4/binary,
+             _/binary
+          >> = TiffMarker) ->
+    read_exif_header(big, Offset, TiffMarker);
+read_tiff_marker(_) ->
+    {error, invalid_exif}.
 
-read_tags(Bin, NumEntries, StartPos, End, TagFun) ->
-    read_tags(Bin, NumEntries, StartPos, End, TagFun, dict:new()).
+read_exif_header(End, Offset, TiffMarker) ->
+    IfdOffset = uread(Offset, End),
+    <<_:IfdOffset/binary, IFD/binary>> = TiffMarker,
+    {ok, read_tags(IFD, TiffMarker, End, fun image_tag/1)}.
+
+read_tags(<< NumEntries:2/binary, Rest/binary >>, TiffMarker, End, TagFun) ->
+    N = uread(NumEntries, End),
+    read_tags(Rest, N, TiffMarker, End, TagFun).
+
+read_tags(Bin, NumEntries, TiffMarker, End, TagFun) ->
+    read_tags(Bin, NumEntries, TiffMarker, End, TagFun, dict:new()).
 
 read_tags(_Bin, 0, _StartPos, _End, _TagFun, Tags) ->
     Tags;
-read_tags(Bin, NumEntries, StartPos, End, TagFun, Tags) ->
-    {NewTags, Rest} = add_tag(Bin, StartPos, End, Tags, TagFun),
-    read_tags(Rest, NumEntries - 1, StartPos + ?FIELD_LEN, End, TagFun, NewTags).
+read_tags(Bin, NumEntries, TiffMarker, End, TagFun, Tags) ->
+    {NewTags, Rest} = add_tag(Bin, TiffMarker, End, Tags, TagFun),
+    read_tags(Rest, NumEntries - 1, TiffMarker, End, TagFun, NewTags).
 
-add_tag(<< Tag:2/binary, Rest/binary >>, StartPos, End, Tags, TagFun) ->
+add_tag(<< Tag:2/binary, Rest/binary >>, TiffMarker, End, Tags, TagFun) ->
     Name = TagFun(uread(Tag, End)),
-    Value = tag_value(Name, read_tag_value(Rest, StartPos, End)),
+    Value = tag_value(Name, read_tag_value(Rest, TiffMarker, End)),
     ?DEBUG("Tag: ~p: ~p~n", [Name, Value]),
     NewTags = case Name of
         unknown ->
             Tags;
         exif ->
-            ExifTags = read_subtags(Rest, Value, StartPos, End, fun exif_tag/1),
+            ExifTags = read_subtags(Value, TiffMarker, End, fun exif_tag/1),
             dict:merge(fun(_K, _ImageTag, ExifTag) -> ExifTag end, Tags, ExifTags);
         gps ->
-            GpsTags = read_subtags(Rest, Value, StartPos, End, fun gps_tag/1),
+            GpsTags = read_subtags(Value, TiffMarker, End, fun gps_tag/1),
             dict:merge(fun(_K, _ImageTag, GpsTag) -> GpsTag end, Tags, GpsTags);
         _ ->
             dict:store(Name, Value, Tags)
@@ -157,20 +169,19 @@ add_tag(<< Tag:2/binary, Rest/binary >>, StartPos, End, Tags, TagFun) ->
     << _:Len/binary, NewRest/binary >> = Rest,
     {NewTags, NewRest}.
 
-read_subtags(Bin, Offset, StartPos, End, TagFun) ->
-    RelOffset = ?FIELD_LEN + Offset - StartPos - 2,
-    RelStartPos = ?FIELD_LEN + Offset + 2,
-    << _:RelOffset/binary, Rest/binary >> = Bin,
-    read_tags(Rest, RelStartPos, End, TagFun).
+read_subtags(Offset, TiffMarker, End, TagFun) ->
+    % RelOffset = ?FIELD_LEN + Offset,
+    << _:Offset/binary, Rest/binary >> = TiffMarker,
+    read_tags(Rest, TiffMarker, End, TagFun).
 
 read_tag_value(<<
                  ValueType   : 2/binary,
                  ValueNum    : 4/binary,
                  Rest/binary
-               >>, StartPos, End) ->
+               >>, TiffMarker, End) ->
     Type = uread(ValueType, End),
     NumValues = uread(ValueNum, End),
-    case decode_tag(Type, Rest, NumValues, StartPos, End) of
+    case decode_tag(Type, Rest, NumValues, TiffMarker, End) of
         [] -> ok;
         [Value] -> Value;
         Values  -> Values
@@ -179,71 +190,72 @@ read_tag_value(<<
 %% Tag decoding by type.
 
 % Byte
-decode_tag(?TYPE_BYTE, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_BYTE, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Byte(~p)~n", [NumValues]),
-    decode_numeric(Bin, NumValues, StartPos, ?BYTE_SIZE, End);
+    decode_numeric(Bin, NumValues, TiffMarker, ?BYTE_SIZE, End);
 
 % ASCII
-decode_tag(?TYPE_ASCII, Bin, NumBytes, StartPos, End) ->
+decode_tag(?TYPE_ASCII, Bin, NumBytes, TiffMarker, End) ->
     ?DEBUG("> ASCII(~p)~n", [NumBytes]),
-    << ValueOffset:4/binary, Rest/binary >> = Bin,
+    << ValueOffset:4/binary, _/binary >> = Bin,
     case NumBytes > 4 of
         true ->
-            Offset = uread(ValueOffset, End) - StartPos,
+            Offset = uread(ValueOffset, End),
             Len = NumBytes - 1,  % ignore null-byte termination
-            << _:Offset/binary, Value:Len/binary, _/binary >> = Rest,
+            << _:Offset/binary, Value:Len/binary, _/binary >> = TiffMarker,
             Value;
         false ->
             ValueOffset
     end;
 
 % Short
-decode_tag(?TYPE_SHORT, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_SHORT, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Short(~p)~n", [NumValues]),
-    decode_numeric(Bin, NumValues, StartPos, ?SHORT_SIZE, End);
+    decode_numeric(Bin, NumValues, TiffMarker, ?SHORT_SIZE, End);
 
 % Signed short
-decode_tag(?TYPE_SIGNED_SHORT, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_SIGNED_SHORT, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Signed Short(~p)~n", [NumValues]),
-    Ushorts = decode_numeric(Bin, NumValues, StartPos, ?SHORT_SIZE, End),
+    Ushorts = decode_numeric(Bin, NumValues, TiffMarker, ?SHORT_SIZE, End),
     lists:map(fun as_signed/1, Ushorts);
 
 % Long
-decode_tag(?TYPE_LONG, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_LONG, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Long(~p)~n", [NumValues]),
-    decode_numeric(Bin, NumValues, StartPos, ?LONG_SIZE, End);
+    decode_numeric(Bin, NumValues, TiffMarker, ?LONG_SIZE, End);
 
 % Signed long
-decode_tag(?TYPE_SIGNED_LONG, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_SIGNED_LONG, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Signed Long(~p)~n", [NumValues]),
-    Ulongs = decode_numeric(Bin, NumValues, StartPos, ?LONG_SIZE, End),
+    Ulongs = decode_numeric(Bin, NumValues, TiffMarker, ?LONG_SIZE, End),
     lists:map(fun as_signed/1, Ulongs);
 
 % Rational
-decode_tag(?TYPE_RATIO, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_RATIO, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Rational(~p)~n", [NumValues]),
-    decode_ratio(Bin, NumValues, StartPos, End);
+    decode_ratio(Bin, NumValues, TiffMarker, End);
 
 % Signed rational
-decode_tag(?TYPE_SIGNED_RATIO, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_SIGNED_RATIO, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Signed Rational(~p)~n", [NumValues]),
-    Uratios = decode_ratio(Bin, NumValues, StartPos, End),
+    Uratios = decode_ratio(Bin, NumValues, TiffMarker, End),
     lists:map(fun({ratio, Num, Den}) ->
         {ratio, as_signed(Num), as_signed(Den)}
     end, Uratios);
 
 % Undefined
-decode_tag(?TYPE_UNDEFINED, Bin, NumValues, StartPos, End) ->
+decode_tag(?TYPE_UNDEFINED, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Undefined(~p)~n", [NumValues]),
-    decode_numeric(Bin, NumValues, StartPos, ?BYTE_SIZE, End).
+    decode_numeric(Bin, NumValues, TiffMarker, ?BYTE_SIZE, End).
 
-decode_numeric(Bin, NumValues, StartPos, Size, End) ->
+
+decode_numeric(Bin, NumValues, TiffMarker, Size, End) ->
     Len = NumValues * Size,
     Values = case Len > 4 of
         true ->
-            << Offset:4/binary, Rest/binary >> = Bin,
-            RelOffset = uread(Offset, End) - StartPos,
-            << _:RelOffset/binary, Data:Len/binary, _/binary >> = Rest,
+            << ValueOffset:4/binary, _/binary >> = Bin,
+            Offset = uread(ValueOffset, End),
+            << _:Offset/binary, Data:Len/binary, _/binary >> = TiffMarker,
             Data;
         false ->
             << Value:Len/binary, _/binary >> = Bin,
@@ -251,27 +263,26 @@ decode_numeric(Bin, NumValues, StartPos, Size, End) ->
     end,
     uread_many(Values, Size, End).
 
-decode_ratio(Bin, NumValues, StartPos, End) ->
-    << ValueOffset:4/binary, Rest/binary >> = Bin,
-    Offset = uread(ValueOffset, End) - StartPos,
-    decode_ratios(Rest, NumValues, Offset, End).
+decode_ratio(Bin, NumValues, TiffMarker, End) ->
+    << ValueOffset:4/binary, _/binary >> = Bin,
+    Offset = uread(ValueOffset, End),
+    <<_:Offset/binary, RatioData/binary>> = TiffMarker,
+    decode_ratios(RatioData, NumValues, End).
 
-decode_ratios(_Bin, 0, _Offset, _End) ->
+decode_ratios(_RatioData, 0, _End) ->
     [];
-decode_ratios(Bin, NumValues, Offset, End) ->
-    << _ : Offset/binary,
-       N : ?LONG_SIZE/binary,
+decode_ratios(RatioData, NumValues, End) ->
+    << N : ?LONG_SIZE/binary,
        D : ?LONG_SIZE/binary,
-       _Rest/binary >> = Bin,
+       Rest/binary >> = RatioData,
 
-    NewOffset = Offset + ?RATIO_SIZE,
     Num = uread(N, End),
     Den = uread(D, End),
 
     %% <<Get:500/binary, _/binary>> = Rest,
     %% io:format(user, "BIN Offset ~p~n~p~n~n~p~n~p~n~n", [{Offset, NewOffset, binary:encode_unsigned(338323, End)}, {N, D}, {Num, Den}, Get]),
 
-    [{ratio, Num, Den} | decode_ratios(Bin, NumValues - 1, NewOffset, End)].
+    [{ratio, Num, Den} | decode_ratios(Rest, NumValues - 1, End)].
 
 as_signed(X) when X > ?MAX_INT32 -> X - ?MAX_UINT32 - 1;
 as_signed(X)                     -> X.
