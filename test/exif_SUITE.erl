@@ -20,7 +20,8 @@ all() ->
         test_read_exif,
         test_read_jfif,
         test_read_jfif_exif,
-        test_ifd_end
+        test_ifd_end,
+        test_empty_tag
     ].
 
 test_read_exif(Config) ->
@@ -62,4 +63,15 @@ test_ifd_end(Config) ->
     DataDir = ?config(data_dir, Config),
     ImagePath = filename:join([DataDir, "ifd_end.jpg"]),
     {ok, _Exif} = exif:read(ImagePath),
+    ok.
+
+test_empty_tag(Config) ->
+    DataDir = ?config(data_dir, Config),
+    ImagePath = filename:join([DataDir, "empty_tag.jpg"]),
+    {ok, Exif} = exif:read(ImagePath),
+    ?assertEqual(error, dict:find(iso_speed_ratings, Exif)),
+    {ok, ShutterSpeed} = dict:find(shutter_speed_value, Exif),
+    ?assertEqual({ratio,0,0}, ShutterSpeed),
+    {ok, ExposureProgram} = dict:find(exposure_program, Exif),
+    ?assertEqual(0, ExposureProgram),
     ok.

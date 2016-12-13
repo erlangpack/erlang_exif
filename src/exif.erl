@@ -40,6 +40,7 @@
 -define(MAX_INT32,      2147483647).
 -define(MAX_UINT32,     4294967295).
 
+-define(TYPE_NONE,          0).
 -define(TYPE_BYTE,          1).
 -define(TYPE_ASCII,         2).
 -define(TYPE_SHORT,         3).
@@ -133,6 +134,7 @@ read_tiff_marker(_) ->
 
 read_exif_header(End, Offset, TiffMarker) ->
     IfdOffset = uread(Offset, End),
+    ?DEBUG("IFD0 at ~p~n", [IfdOffset]),
     <<_:IfdOffset/binary, IFD/binary>> = TiffMarker,
     {ok, read_tags(IFD, TiffMarker, End, fun image_tag/1)}.
 
@@ -143,34 +145,40 @@ read_tags(<< NumEntries:2/binary, Rest/binary >>, TiffMarker, End, TagFun) ->
 read_tags(Bin, NumEntries, TiffMarker, End, TagFun) ->
     read_tags(Bin, NumEntries, TiffMarker, End, TagFun, dict:new()).
 
-read_tags(_Bin, 0, _StartPos, _End, _TagFun, Tags) ->
+read_tags(_Bin, 0, _TiffMarker, _End, _TagFun, Tags) ->
     Tags;
 read_tags(Bin, NumEntries, TiffMarker, End, TagFun, Tags) ->
     {NewTags, Rest} = add_tag(Bin, TiffMarker, End, Tags, TagFun),
     read_tags(Rest, NumEntries - 1, TiffMarker, End, TagFun, NewTags).
 
 add_tag(<< Tag:2/binary, Rest/binary >>, TiffMarker, End, Tags, TagFun) ->
-    Name = TagFun(uread(Tag, End)),
+    TagNum = uread(Tag, End),
+    Name = TagFun(TagNum),
     Value = tag_value(Name, read_tag_value(Rest, TiffMarker, End)),
-    ?DEBUG("Tag: ~p: ~p~n", [Name, Value]),
-    NewTags = case Name of
-        unknown ->
+    ?DEBUG("Tag(0x~.16b): ~p: ~p~n", [TagNum, Name, Value]),
+    NewTags = if
+        Value =:= undefined ->
             Tags;
-        exif ->
-            ExifTags = read_subtags(Value, TiffMarker, End, fun exif_tag/1),
-            dict:merge(fun(_K, _ImageTag, ExifTag) -> ExifTag end, Tags, ExifTags);
-        gps ->
-            GpsTags = read_subtags(Value, TiffMarker, End, fun gps_tag/1),
-            dict:merge(fun(_K, _ImageTag, GpsTag) -> GpsTag end, Tags, GpsTags);
-        _ ->
-            dict:store(Name, Value, Tags)
+        true ->
+            case Name of
+                unknown ->
+                    Tags;
+                exif ->
+                    ExifTags = read_subtags(Value, TiffMarker, End, fun exif_tag/1),
+                    dict:merge(fun(_K, _ImageTag, ExifTag) -> ExifTag end, Tags, ExifTags);
+                gps ->
+                    GpsTags = read_subtags(Value, TiffMarker, End, fun gps_tag/1),
+                    dict:merge(fun(_K, _ImageTag, GpsTag) -> GpsTag end, Tags, GpsTags);
+                _ ->
+                    dict:store(Name, Value, Tags)
+            end
     end,
     Len = ?FIELD_LEN - 2, % 2 bytes for the tag above.
     << _:Len/binary, NewRest/binary >> = Rest,
     {NewTags, NewRest}.
 
 read_subtags(Offset, TiffMarker, End, TagFun) ->
-    % RelOffset = ?FIELD_LEN + Offset,
+    ?DEBUG("Sub-IFD at ~p~n", [Offset]),
     << _:Offset/binary, Rest/binary >> = TiffMarker,
     read_tags(Rest, TiffMarker, End, TagFun).
 
@@ -246,7 +254,11 @@ decode_tag(?TYPE_SIGNED_RATIO, Bin, NumValues, TiffMarker, End) ->
 % Undefined
 decode_tag(?TYPE_UNDEFINED, Bin, NumValues, TiffMarker, End) ->
     ?DEBUG("> Undefined(~p)~n", [NumValues]),
-    decode_numeric(Bin, NumValues, TiffMarker, ?BYTE_SIZE, End).
+    decode_numeric(Bin, NumValues, TiffMarker, ?BYTE_SIZE, End);
+
+decode_tag(?TYPE_NONE, _Bin, 0, _TiffMarker, _End) ->
+    ?DEBUG("> None~n",[]),
+    undefined. 
 
 
 decode_numeric(Bin, NumValues, TiffMarker, Size, End) ->
