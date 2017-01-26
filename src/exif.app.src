@@ -1,6 +1,6 @@
 {application, exif, [
     {description, "Read EXIF data from JPEG images."},
-    {vsn, "2.0.2"},
+    {vsn, "2.0.3"},
     {registered, []},
     {modules, []},
     {applications, [

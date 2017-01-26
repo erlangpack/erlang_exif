@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.3] - 2017-01-25
+### Changed
+- mworrell: Fix a problem with some cameras inserting 'no value' exif tags.
+- mworrell: Fix parsing exif info when IFD block is at end of file.
+
 ## [2.0.2] - 2016-03-16
 ### Changed
 - Fix code and tests to work with Erlang/OTP R16.
