@@ -1,10 +1,12 @@
-.gitignore
 *.beam
 .eunit
+.gitignore
 .rebar
 .rebar3
-ebin
+_build
 _rel
+doc
+ebin
 erl_crash.dump
 logs
-doc
+rebar.lock
