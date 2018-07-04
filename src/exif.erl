@@ -20,7 +20,15 @@
 -define(DEBUG(_Fmt, _Args), ok).
 -endif.
 
+-ifdef(otp17_or_higher).
+
 -type exif() :: dict:dict() | map().
+
+-else.
+
+-type exif() :: dict().
+
+-endif.
 
 -type data_module() :: exif_dict | exif_maps.
 -type return_type() :: dict | maps.
@@ -77,7 +85,7 @@ read_binary(Data, ReturnType) when is_binary(Data) ->
                    true ->
                         Data
                 end,
-    read(ImageData, data_mod(ReturnType)).
+    find_and_parse_exif(ImageData, data_mod(ReturnType)).
 
 %%
 %% @doc Read the Exif data from a named file (or binary data).
@@ -111,10 +119,10 @@ read(File, ReturnType) when is_list(File) ->
     {ok, Fd} = file:open(File, [read, binary, raw]),
     {ok, Img} = file:read(Fd, ?MAX_EXIF_LEN),
     ok = file:close(Fd),
-    read(Img, data_mod(ReturnType));
+    find_and_parse_exif(Img, data_mod(ReturnType)).
 
 
-read(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>, DataMod) ->
+find_and_parse_exif(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>, DataMod) ->
     % skip the JFIF segment and attempt to match the Exif segment
     case skip_segment(Len, Rest) of
         <<?EXIF_MARKER:16, _Len:16, Exif/binary>> ->
@@ -123,11 +131,11 @@ read(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>, DataMod) ->
             % apparently just JFIF and no Exif
             {ok, DataMod:new()}
     end;
-read(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>, DataMod) ->
+find_and_parse_exif(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>, DataMod) ->
     read_exif(Rest, DataMod);
-read(<< ?JPEG_MARKER:16, _Rest/binary >>, DataMod) ->
+find_and_parse_exif(<< ?JPEG_MARKER:16, _Rest/binary >>, DataMod) ->
     {ok, DataMod:new()};
-read(_, DataMod) ->
+find_and_parse_exif(_, DataMod) ->
     {ok, DataMod:new()}.
 
 -spec data_mod(ReturnType) -> DataMod
