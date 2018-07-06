@@ -11,8 +11,8 @@
 %% -------------------------------------------------------------------
 
 -module(exif).
--export([read/1]).
--export([read_binary/1]).
+-export([read/1, read/2]).
+-export([read_binary/1, read_binary/2]).
 
 -ifdef(debug).
 -define(DEBUG(Fmt, Args), io:format(Fmt, Args)).
@@ -20,11 +20,18 @@
 -define(DEBUG(_Fmt, _Args), ok).
 -endif.
 
--ifdef(namespaced_dicts).
--type exif_dict() :: dict:dict().
+-ifdef(otp17_or_higher).
+
+-type exif() :: dict:dict() | map().
+
 -else.
--type exif_dict() :: dict().
+
+-type exif() :: dict().
+
 -endif.
+
+-type data_module() :: exif_dict | exif_maps.
+-type return_type() :: dict | maps.
 
 -define(MAX_EXIF_LEN,        65536).
 -define(JPEG_MARKER,       16#ffd8).
@@ -57,49 +64,85 @@
 %%
 -spec read_binary(Data) -> {ok, Exif} | {error, Reason}
     when Data   :: binary(),
-         Exif   :: exif_dict(),
+         Exif   :: exif(),
          Reason :: term().
-read_binary(Data) when is_binary(Data) ->
+read_binary(Data) ->
+    read_binary(Data, dict).
+
+%%
+%% @doc Read the Exif data from a binary and specify
+%%      a data module.
+%%
+-spec read_binary(Data, ReturnType) -> {ok, Exif} | {error, Reason}
+    when Data       :: binary(),
+         ReturnType :: return_type(),
+         Exif       :: exif(),
+         Reason     :: term().
+read_binary(Data, ReturnType) when is_binary(Data) ->
     ImageData = if byte_size(Data) > ?MAX_EXIF_LEN ->
                         <<Img:?MAX_EXIF_LEN/binary, _/binary>> = Data,
                         Img;
                    true ->
                         Data
                 end,
-    read(ImageData).
+    find_and_parse_exif(ImageData, data_mod(ReturnType)).
 
 %%
 %% @doc Read the Exif data from a named file (or binary data).
 %%
 -spec read(File) -> {ok, Exif} | {error, Reason}
     when File   :: list(),
-         Exif   :: exif_dict(),
+         Exif   :: exif(),
          Reason :: term()
         ; (Data) -> {ok, Exif} | {error, Reason}
     when Data   :: binary(),
-         Exif   :: exif_dict(),
+         Exif   :: exif(),
          Reason :: term().
 read(File) when is_list(File) ->
+    read(File, dict).
+
+%%
+%% @doc Read the Exif data from a named file (or binary data)
+%%      with data module specified.
+%%
+-spec read(File, ReturnType) -> {ok, Exif} | {error, Reason}
+    when File       :: list(),
+         ReturnType :: return_type(),
+         Exif       :: exif(),
+         Reason     :: term()
+        ; (Data, ReturnType) -> {ok, Exif} | {error, Reason}
+    when Data       :: binary(),
+         ReturnType :: return_type(),
+         Exif       :: exif(),
+         Reason     :: term().
+read(File, ReturnType) when is_list(File) ->
     {ok, Fd} = file:open(File, [read, binary, raw]),
     {ok, Img} = file:read(Fd, ?MAX_EXIF_LEN),
     ok = file:close(Fd),
-    read(Img);
+    find_and_parse_exif(Img, data_mod(ReturnType)).
 
-read(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>) ->
+
+find_and_parse_exif(<< ?JPEG_MARKER:16, ?JFIF_MARKER:16, Len:16, Rest/binary >>, DataMod) ->
     % skip the JFIF segment and attempt to match the Exif segment
     case skip_segment(Len, Rest) of
         <<?EXIF_MARKER:16, _Len:16, Exif/binary>> ->
-            read_exif(Exif);
+            read_exif(Exif, DataMod);
         _ ->
             % apparently just JFIF and no Exif
-            {ok, dict:new()}
+            {ok, DataMod:new()}
     end;
-read(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>) ->
-    read_exif(Rest);
-read(<< ?JPEG_MARKER:16, _Rest/binary >>) ->
-    {ok, dict:new()};
-read(_) ->
-    {ok, dict:new()}.
+find_and_parse_exif(<< ?JPEG_MARKER:16, ?EXIF_MARKER:16, _Len:16, Rest/binary >>, DataMod) ->
+    read_exif(Rest, DataMod);
+find_and_parse_exif(<< ?JPEG_MARKER:16, _Rest/binary >>, DataMod) ->
+    {ok, DataMod:new()};
+find_and_parse_exif(_, DataMod) ->
+    {ok, DataMod:new()}.
+
+-spec data_mod(ReturnType) -> DataMod
+    when ReturnType :: return_type(),
+         DataMod :: data_module().
+data_mod(dict) -> exif_dict;
+data_mod(maps) -> exif_maps.
 
 skip_segment(Len, Data) ->
     Skip = Len - 2,
@@ -111,9 +154,9 @@ read_exif(<<
             "Exif",
             0 : 16,
             TiffMarker/binary
-        >>) ->
-    read_tiff_marker(TiffMarker);
-read_exif(_) ->
+        >>, DataMod) ->
+    read_tiff_marker(TiffMarker, DataMod);
+read_exif(_, _) ->
     {error, invalid_exif}.
 
 read_tiff_marker(<<
@@ -121,37 +164,37 @@ read_tiff_marker(<<
              16#2a00   : 16,
              Offset    : 4/binary,
              _/binary
-          >> = TiffMarker) ->
-    read_exif_header(little, Offset, TiffMarker);
+          >> = TiffMarker, DataMod) ->
+    read_exif_header(little, Offset, TiffMarker, DataMod);
 read_tiff_marker(<< 16#4d4d   : 16,
              16#002a   : 16,
              Offset    : 4/binary,
              _/binary
-          >> = TiffMarker) ->
-    read_exif_header(big, Offset, TiffMarker);
-read_tiff_marker(_) ->
+          >> = TiffMarker, DataMod) ->
+    read_exif_header(big, Offset, TiffMarker, DataMod);
+read_tiff_marker(_, _DataMod) ->
     {error, invalid_exif}.
 
-read_exif_header(End, Offset, TiffMarker) ->
+read_exif_header(End, Offset, TiffMarker, DataMod) ->
     IfdOffset = uread(Offset, End),
     ?DEBUG("IFD0 at ~p~n", [IfdOffset]),
     <<_:IfdOffset/binary, IFD/binary>> = TiffMarker,
-    {ok, read_tags(IFD, TiffMarker, End, fun image_tag/1)}.
+    {ok, read_tags(IFD, TiffMarker, End, fun image_tag/1, DataMod)}.
 
-read_tags(<< NumEntries:2/binary, Rest/binary >>, TiffMarker, End, TagFun) ->
+read_tags(<< NumEntries:2/binary, Rest/binary >>, TiffMarker, End, TagFun, DataMod) ->
     N = uread(NumEntries, End),
-    read_tags(Rest, N, TiffMarker, End, TagFun).
+    read_tags(Rest, N, TiffMarker, End, TagFun, DataMod).
 
-read_tags(Bin, NumEntries, TiffMarker, End, TagFun) ->
-    read_tags(Bin, NumEntries, TiffMarker, End, TagFun, dict:new()).
+read_tags(Bin, NumEntries, TiffMarker, End, TagFun, DataMod) ->
+    read_tags(Bin, NumEntries, TiffMarker, End, TagFun, DataMod:new(), DataMod).
 
-read_tags(_Bin, 0, _TiffMarker, _End, _TagFun, Tags) ->
+read_tags(_Bin, 0, _TiffMarker, _End, _TagFun, Tags, _DataMod) ->
     Tags;
-read_tags(Bin, NumEntries, TiffMarker, End, TagFun, Tags) ->
-    {NewTags, Rest} = add_tag(Bin, TiffMarker, End, Tags, TagFun),
-    read_tags(Rest, NumEntries - 1, TiffMarker, End, TagFun, NewTags).
+read_tags(Bin, NumEntries, TiffMarker, End, TagFun, Tags, DataMod) ->
+    {NewTags, Rest} = add_tag(Bin, TiffMarker, End, Tags, TagFun, DataMod),
+    read_tags(Rest, NumEntries - 1, TiffMarker, End, TagFun, NewTags, DataMod).
 
-add_tag(<< Tag:2/binary, Rest/binary >>, TiffMarker, End, Tags, TagFun) ->
+add_tag(<< Tag:2/binary, Rest/binary >>, TiffMarker, End, Tags, TagFun, DataMod) ->
     TagNum = uread(Tag, End),
     Name = TagFun(TagNum),
     Value = tag_value(Name, read_tag_value(Rest, TiffMarker, End)),
@@ -164,23 +207,23 @@ add_tag(<< Tag:2/binary, Rest/binary >>, TiffMarker, End, Tags, TagFun) ->
                 unknown ->
                     Tags;
                 exif ->
-                    ExifTags = read_subtags(Value, TiffMarker, End, fun exif_tag/1),
-                    dict:merge(fun(_K, _ImageTag, ExifTag) -> ExifTag end, Tags, ExifTags);
+                    ExifTags = read_subtags(Value, TiffMarker, End, fun exif_tag/1, DataMod),
+                    DataMod:merge(Tags, ExifTags);
                 gps ->
-                    GpsTags = read_subtags(Value, TiffMarker, End, fun gps_tag/1),
-                    dict:merge(fun(_K, _ImageTag, GpsTag) -> GpsTag end, Tags, GpsTags);
+                    GpsTags = read_subtags(Value, TiffMarker, End, fun gps_tag/1, DataMod),
+                    DataMod:merge(Tags, GpsTags);
                 _ ->
-                    dict:store(Name, Value, Tags)
+                    DataMod:store(Name, Value, Tags)
             end
     end,
     Len = ?FIELD_LEN - 2, % 2 bytes for the tag above.
     << _:Len/binary, NewRest/binary >> = Rest,
     {NewTags, NewRest}.
 
-read_subtags(Offset, TiffMarker, End, TagFun) ->
+read_subtags(Offset, TiffMarker, End, TagFun, DataMod) ->
     ?DEBUG("Sub-IFD at ~p~n", [Offset]),
     << _:Offset/binary, Rest/binary >> = TiffMarker,
-    read_tags(Rest, TiffMarker, End, TagFun).
+    read_tags(Rest, TiffMarker, End, TagFun, DataMod).
 
 read_tag_value(<<
                  ValueType   : 2/binary,
