@@ -17,8 +17,8 @@
 
 all() ->
     [
-     {group, dict},
-     {group, maps}
+     {group, dict}
+     | maybe_maps_tests()
     ].
 
 groups() ->
@@ -35,6 +35,16 @@ all_tests() ->
         test_ifd_end,
         test_empty_tag
     ].
+
+-ifdef(otp17_or_higher).
+
+maybe_maps_tests() ->  [{group, maps}].
+
+-else.
+
+maybe_maps_tests() -> [].
+
+-endif.
 
 %% ------------------------------------------------------------
 %% Init & clean
@@ -102,8 +112,9 @@ test_read_jfif_exif(Config) ->
 
 test_ifd_end(Config) ->
     DataDir = ?config(data_dir, Config),
+    ReturnType = ?config(return_type, Config),
     ImagePath = filename:join([DataDir, "ifd_end.jpg"]),
-    {ok, _Exif} = exif:read(ImagePath),
+    {ok, _Exif} = exif:read(ImagePath, ReturnType),
     ok.
 
 test_empty_tag(Config) ->
