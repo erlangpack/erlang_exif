@@ -91,14 +91,14 @@ read_binary(Data, ReturnType) when is_binary(Data) ->
 %% @doc Read the Exif data from a named file (or binary data).
 %%
 -spec read(File) -> {ok, Exif} | {error, Reason}
-    when File   :: list(),
+    when File   :: file:filename_all(),
          Exif   :: exif(),
          Reason :: term()
         ; (Data) -> {ok, Exif} | {error, Reason}
     when Data   :: binary(),
          Exif   :: exif(),
          Reason :: term().
-read(File) when is_list(File) ->
+read(File) when is_list(File); is_binary(File) ->
     read(File, dict).
 
 %%
@@ -106,7 +106,7 @@ read(File) when is_list(File) ->
 %%      with data module specified.
 %%
 -spec read(File, ReturnType) -> {ok, Exif} | {error, Reason}
-    when File       :: list(),
+    when File       :: file:filename_all(),
          ReturnType :: return_type(),
          Exif       :: exif(),
          Reason     :: term()
@@ -115,7 +115,7 @@ read(File) when is_list(File) ->
          ReturnType :: return_type(),
          Exif       :: exif(),
          Reason     :: term().
-read(File, ReturnType) when is_list(File) ->
+read(File, ReturnType) when is_list(File); is_binary(File) ->
     {ok, Fd} = file:open(File, [read, binary, raw]),
     {ok, Img} = file:read(Fd, ?MAX_EXIF_LEN),
     ok = file:close(Fd),
