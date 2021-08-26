@@ -10,7 +10,7 @@
 %% @end
 %% -------------------------------------------------------------------
 
--module(exif).
+-module(erlang_exif).
 -export([read/1, read/2]).
 -export([read_binary/1, read_binary/2]).
 
@@ -20,17 +20,9 @@
 -define(DEBUG(_Fmt, _Args), ok).
 -endif.
 
--ifdef(otp17_or_higher).
-
 -type exif() :: dict:dict() | map().
 
--else.
-
--type exif() :: dict().
-
--endif.
-
--type data_module() :: exif_dict | exif_maps.
+-type data_module() :: erlang_exif_dict | erlang_exif_maps.
 -type return_type() :: dict | maps.
 
 -define(MAX_EXIF_LEN,        65536).
@@ -141,8 +133,8 @@ find_and_parse_exif(_, DataMod) ->
 -spec data_mod(ReturnType) -> DataMod
     when ReturnType :: return_type(),
          DataMod :: data_module().
-data_mod(dict) -> exif_dict;
-data_mod(maps) -> exif_maps.
+data_mod(dict) -> erlang_exif_dict;
+data_mod(maps) -> erlang_exif_maps.
 
 skip_segment(Len, Data) ->
     Skip = Len - 2,

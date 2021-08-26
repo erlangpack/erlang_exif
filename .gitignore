@@ -3,6 +3,7 @@
 .gitignore
 .rebar
 .rebar3
+rebar3
 _build
 _rel
 doc

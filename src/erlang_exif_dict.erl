@@ -1,4 +1,4 @@
--module(exif_dict).
+-module(erlang_exif_dict).
 
 -export([new/0, merge/2, store/3, size/1, find/2]).
 

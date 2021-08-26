@@ -1,6 +1,6 @@
-{application, exif, [
+{application, erlang_exif, [
     {description, "Read EXIF data from JPEG images."},
-    {vsn, "2.0.3"},
+    {vsn, git},
     {registered, []},
     {modules, []},
     {applications, [
