@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.0] - 2021-08-27
+### Changed
+- mworrell: Renamed to erlang_exif, removed R16 compat, published to Hex
+
 ## [2.0.3] - 2017-01-25
 ### Changed
 - mworrell: Fix a problem with some cameras inserting 'no value' exif tags.
