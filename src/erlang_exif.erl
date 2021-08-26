@@ -85,10 +85,6 @@ read_binary(Data, ReturnType) when is_binary(Data) ->
 -spec read(File) -> {ok, Exif} | {error, Reason}
     when File   :: file:filename_all(),
          Exif   :: exif(),
-         Reason :: term()
-        ; (Data) -> {ok, Exif} | {error, Reason}
-    when Data   :: binary(),
-         Exif   :: exif(),
          Reason :: term().
 read(File) when is_list(File); is_binary(File) ->
     read(File, dict).
@@ -99,11 +95,6 @@ read(File) when is_list(File); is_binary(File) ->
 %%
 -spec read(File, ReturnType) -> {ok, Exif} | {error, Reason}
     when File       :: file:filename_all(),
-         ReturnType :: return_type(),
-         Exif       :: exif(),
-         Reason     :: term()
-        ; (Data, ReturnType) -> {ok, Exif} | {error, Reason}
-    when Data       :: binary(),
          ReturnType :: return_type(),
          Exif       :: exif(),
          Reason     :: term().
