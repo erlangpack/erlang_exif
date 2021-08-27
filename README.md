@@ -25,7 +25,7 @@ To add `erlang_exif` as a dependency to your rebar-based project, simply add the
 
 ## Example
 
-The `erlang_exif:read(Path)` function actually calls `erlang_exif:read(Path, dict)` (for backward compatibility).
+The `erlang_exif:read(Path)` function actually calls `erlang_exif:read(Path, map)`.
 
 The `erlang_exif:read(Path, ReturnType)` function returns `{ok, Exif}` where `Exif` is a `dict:dict()` or a map
 of the values read from the JPEG image. `ReturnType` has two valid values: `dict` and `maps`.

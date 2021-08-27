@@ -20,7 +20,9 @@
 -define(DEBUG(_Fmt, _Args), ok).
 -endif.
 
--type exif() :: dict:dict() | map().
+-type exif() :: exif_map() | exif_dict().
+-type exif_dict() :: dict:dict().
+-type exif_map() :: #{ atom() => term() }.
 
 -type data_module() :: erlang_exif_dict | erlang_exif_maps.
 -type return_type() :: dict | maps.
@@ -80,14 +82,15 @@ read_binary(Data, ReturnType) when is_binary(Data) ->
     find_and_parse_exif(ImageData, data_mod(ReturnType)).
 
 %%
-%% @doc Read the Exif data from a named file (or binary data).
+%% @doc Read the Exif data from a named file (or binary data) and return a
+%% a map with the read data.
 %%
--spec read(File) -> {ok, Exif} | {error, Reason}
-    when File   :: file:filename_all(),
-         Exif   :: exif(),
-         Reason :: term().
+-spec read(File) -> {ok, ExifMap} | {error, Reason}
+    when File    :: file:filename_all(),
+         ExifMap :: exif_map(),
+         Reason  :: term().
 read(File) when is_list(File); is_binary(File) ->
-    read(File, dict).
+    read(File, maps).
 
 %%
 %% @doc Read the Exif data from a named file (or binary data)
