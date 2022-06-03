@@ -23,7 +23,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.0.0] - 2015-05-17
 ### Changed
 - The read functions now return `{ok, Data}` instead of just `Data`, to make it easier
-  to distinquish from the error case (`{error, Reason}`).
+  to distinguish from the error case (`{error, Reason}`).
 
 ## [1.1.0] - 2015-05-14
 ### Changed

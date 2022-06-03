@@ -1,0 +1,17 @@
+{application, main,
+ [{description, "the OTP example"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {main_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    cowmachine,
+	erlang_exif
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
