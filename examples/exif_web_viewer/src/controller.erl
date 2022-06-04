@@ -180,7 +180,6 @@ buildPictureInfo(FileName, FileBody) ->
 	PictureInfo.
 
 buildPictureInfo(FileBody) ->
-	% maps
 	InfoMapResult = erlang_exif:read_binary(FileBody, maps),
 	%io:format("InfoMapResult = ~p~n",[InfoMapResult]),
 	case InfoMapResult of
@@ -193,8 +192,23 @@ buildPictureInfo(FileBody) ->
 				io_lib:format("~p",[tuneValue(Value)]) ++
 				"</li>"
 				end, "", InfoMap),
-			%io:format("Info = ~p~n",[String]),	
-			"<ul>" ++ String ++ "</ul>";
+			%io:format("Bas64 = ~p~n",[base64:encode_to_string(FileBody)]),	
+			"<table>" ++
+			"<tr>" ++
+			"<th>Image</th>" ++
+			"<th>EXIF data</th>" ++
+			"</tr>" ++
+			"<tr>" ++
+			"<td style=\"vertical-align: top;\">" ++ 
+			"<img style=\"max-width: 240px;\" src=\"data:image/png;base64," ++ base64:encode_to_string(FileBody) ++ "\" />" ++
+			"</td>" ++
+			"<td style=\"width:80%;\">" ++ 			
+			"<ul style=\"vertical-align: top;\">" ++ 
+			String ++ 
+			"</ul>" ++
+			"</td>" ++
+			"</tr>" ++
+			"</table>";
 		{error, _Reason} ->
 			"no info"
 	end.
