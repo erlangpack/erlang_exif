@@ -11,3 +11,6 @@ ebin
 erl_crash.dump
 logs
 rebar.lock
+doc/*
+!doc/style.css
+!doc/overview.edoc
