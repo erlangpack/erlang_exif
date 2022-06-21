@@ -6,7 +6,12 @@
 %% -------------------------------------------------------------------
 
 -module(erlang_exif_SUITE).
--compile(export_all).
+-export([
+all/0, groups/0, all_tests/0, maybe_maps_tests/0, init_per_suite/1, end_per_suite/1, init_per_group/2, end_per_group/2
+]).
+-export([
+test_read_exif/1, test_read_jfif/1, test_read_jfif_exif/1, test_ifd_end/1, test_empty_tag/1
+]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").

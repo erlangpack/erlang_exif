@@ -1,4 +1,13 @@
+[![Test][gh badge]][gh]
+[![Hex.pm version][hexpm version]][hexpm]
+[![Hex.pm Downloads][hexpm downloads]][hexpm]
+[![Hex.pm Documentation][hexdocs documentation]][hexdocs]
+[![Erlang Versions][erlang version badge]][gh]
+[![License][license]](https://opensource.org/licenses/BSD-3-Clause)
+
 # Erlang EXIF Library
+
+More information related to EXIF is [here](https://exifdata.com/).
 
 ## Building and Testing
 
@@ -15,7 +24,8 @@ $ make test
 
 ## Usage
 
-To add `erlang_exif` as a dependency to your rebar-based project, simply add the following to your `rebar.config` file, then run the `./rebar3 upgrade` command to retrieve it.
+To add `erlang_exif` as a dependency to your rebar-based project, simply add the following to your 
+`rebar.config` file, then run the `./rebar3 upgrade` command to retrieve it.
 
 ```
 {deps, [
@@ -50,3 +60,14 @@ end.
 Two more functions are present: `erlang_exif:read_binary/1` and `erlang_exif:read_binary/2` which are
 equivalents of `erlang_exif:read/1,2`.
 They accept actual file in binary format as a first argument, instead of a path.
+
+<!-- Badges -->
+[hexpm]: https://hex.pm/packages/erlang_exif
+[hexpm version]: https://img.shields.io/hexpm/v/erlang_exif.svg?style=flat-curcle "Hex version"
+[hexpm downloads]: https://img.shields.io/hexpm/dt/erlang_exif.svg?style=flat-curcle
+[hexdocs documentation]: https://img.shields.io/badge/hex-docs-purple.svg?style=flat-curcle
+[hexdocs]: https://hexdocs.pm/erlang_exif
+[gh]: https://github.com/erlangpack/erlang_exif/actions/workflows/test.yaml
+[gh badge]: https://github.com/erlangpack/erlang_exif/workflows/Test/badge.svg
+[erlang version badge]: https://img.shields.io/badge/Supported%20Erlang%2FOTP-22.0%20to%2024.0-blue.svg?style=flat-curcle
+[license]: https://img.shields.io/badge/License-BSD_3_Clause-blue.svg?logo=bsd&logoColor=red "BSD-3-Clause"

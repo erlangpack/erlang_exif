@@ -1,3 +1,6 @@
+%% @doc EXIF maps<br/>
+%% @private
+%% @end
 -module(erlang_exif_maps).
 
 -export([new/0, merge/2, store/3, size/1, find/2]).
