@@ -13,7 +13,7 @@ More information related to EXIF is [here](https://exifdata.com/).
 
 ### Prerequisites
 
-* [Erlang/OTP](http://www.erlang.org) 18 or higher.
+* [Erlang/OTP](http://www.erlang.org) 23 or higher.
 
 To build the application and run the test suite, use the Makefile like so:
 
