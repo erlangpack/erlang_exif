@@ -69,5 +69,5 @@ They accept actual file in binary format as a first argument, instead of a path.
 [hexdocs]: https://hexdocs.pm/erlang_exif
 [gh]: https://github.com/erlangpack/erlang_exif/actions/workflows/test.yaml
 [gh badge]: https://github.com/erlangpack/erlang_exif/workflows/Test/badge.svg
-[erlang version badge]: https://img.shields.io/badge/Supported%20Erlang%2FOTP-22.0%20to%2024.0-blue.svg?style=flat-curcle
+[erlang version badge]: https://img.shields.io/badge/Supported%20Erlang%2FOTP-23.0%20to%2024.0-blue.svg?style=flat-curcle
 [license]: https://img.shields.io/badge/License-BSD_3_Clause-blue.svg?logo=bsd&logoColor=red "BSD-3-Clause"
