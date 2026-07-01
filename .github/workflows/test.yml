@@ -1,4 +1,4 @@
-# This workflow checks the tests and dialyzer.
+# This workflow checks the tests, dialyzer, and documentation build.
 
 name: Test
 
@@ -34,3 +34,5 @@ jobs:
         run: make xref
       - name: Dialyzer
         run: make dialyzer
+      - name: Docs
+        run: make doc

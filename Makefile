@@ -2,7 +2,7 @@ REBAR := ./rebar3
 REBAR_URL := https://s3.amazonaws.com/rebar3/rebar3
 ERL       ?= erl
 
-.PHONY: all compile shell test clean xref dialyzer
+.PHONY: all compile shell test clean clean_doc xref dialyzer doc doc_private
 
 all: compile
 
@@ -14,26 +14,24 @@ shell: $(REBAR)
 
 test: $(REBAR)
 	$(REBAR) as test ct --readable true -c
-	
+
 clean: $(REBAR) clean_doc
 	$(REBAR) clean
 
 clean_doc:
-	@rm -f doc/*.html
-	@rm -f doc/erlang.png
-	@rm -f doc/edoc-info	
+	@rm -rf doc
 
 xref: $(REBAR)
 	$(REBAR) as test xref
 
 dialyzer: $(REBAR)
 	$(REBAR) as check dialyzer
-	
-doc:  $(REBAR) doc/overview.edoc
-	$(REBAR) edoc
+
+doc: $(REBAR)
+	$(REBAR) ex_doc
 
 doc_private: $(REBAR)
-	$(REBAR) as doc_private edoc	
+	$(REBAR) as doc_private edoc
 
 ./rebar3:
 	$(ERL) -noshell -s inets -s ssl \
