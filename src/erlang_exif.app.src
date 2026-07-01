@@ -9,6 +9,6 @@
     ]},
     {env, []},
     {maintainers, ["Zotonic Team / Erlang Pack"]},
-    {licenses, ["BSD-3-Clause License"]},
+    {licenses, ["BSD-3-Clause"]},
     {links, [{"GitHub", "https://github.com/erlangpack/erlang_exif"}]}
 ]}.
