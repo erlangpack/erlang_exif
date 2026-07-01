@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.1.0] - 2026-07-01
+### Changed
+
+Anatolii Kosorukov (4):
+
+* General improvements
+* Tune web viewer example
+* Add changes while review
+* General improvements (#3)
+
+Kian-Meng Ang (1):
+* Fix typo
+
+Marc Worrell (5):
+* Update test.yml - OTP 23, 24, 25
+* Fix misspelling subsec_time_orginal (#4)
+* Add exdoc to rebar.config (#5)
+
 ## [3.0.0] - 2021-08-27
 ### Changed
 - mworrell: Renamed to erlang_exif, removed R16 compat, published to Hex
