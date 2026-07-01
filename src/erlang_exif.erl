@@ -450,7 +450,7 @@ exif_tag(16#9214) -> subject_area;
 exif_tag(16#927c) -> maker_note;
 exif_tag(16#9286) -> user_comment;
 exif_tag(16#9290) -> subsec_time;
-exif_tag(16#9291) -> subsec_time_orginal;
+exif_tag(16#9291) -> subsec_time_original;
 exif_tag(16#9292) -> subsec_time_digitized;
 exif_tag(16#a000) -> flashpix_version;
 exif_tag(16#a001) -> color_space;
